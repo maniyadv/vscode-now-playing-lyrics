@@ -4,6 +4,12 @@ Display synchronized lyrics for your currently playing songs directly in VSCode'
 
 ![Demo](images/demo.gif)
 
+## ⚠️ Requirements
+
+- **macOS only**: This extension uses AppleScript to interact with Music and Spotify apps
+- Apple Music or Spotify desktop app
+- VSCode 1.85.0 or higher
+
 ## Features
 
 - 🎵 Real-time synchronized lyrics that follow along with your music

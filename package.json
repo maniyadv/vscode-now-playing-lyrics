@@ -7,6 +7,7 @@
     "engines": {
         "vscode": "^1.85.0"
     },
+    "os": ["darwin"],
     "icon": "images/icon.jpg",
     "categories": [
         "Other"
