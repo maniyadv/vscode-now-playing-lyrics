@@ -2,12 +2,14 @@
     "name": "now-playing-lyrics",
     "displayName": "Now Playing Lyrics",
     "description": "Display synchronized lyrics for currently playing songs in Apple Music or Spotify",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "publisher": "maniyadv",
     "engines": {
         "vscode": "^1.85.0"
     },
-    "os": ["darwin"],
+    "os": [
+        "darwin"
+    ],
     "icon": "images/icon.jpg",
     "categories": [
         "Other"
