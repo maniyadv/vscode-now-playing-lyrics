@@ -2,6 +2,8 @@
 
 Display synchronized lyrics for your currently playing songs directly in VSCode! Supports both Apple Music and Spotify.
 
+[![Visual Studio Marketplace](https://img.shields.io/visual-studio-marketplace/v/maniyadv.now-playing-lyrics)](https://marketplace.visualstudio.com/items?itemName=maniyadv.now-playing-lyrics)
+
 ## Screenshots
 
 ### Status Bar Views
@@ -25,7 +27,7 @@ Display synchronized lyrics for your currently playing songs directly in VSCode!
 
 ## Installation
 
-1. Install the extension from the VSCode Marketplace
+1. Install the extension from the [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=maniyadv.now-playing-lyrics)
 2. The lyrics will automatically appear in the status bar when you play music in Apple Music or Spotify
 3. Click on the lyrics to view them in full in a side panel
 
