@@ -1,8 +1,15 @@
 # Now Playing Lyrics
 
-Display synchronized lyrics for your currently playing songs directly in VSCode's status bar! Supports both Apple Music and Spotify on macOS.
+Display synchronized lyrics for your currently playing songs directly in VSCode! Supports both Apple Music and Spotify.
 
-![Demo](images/demo.gif)
+## Screenshots
+
+### Status Bar Views
+![Status Bar View 1](images/demo/screenshot1.png)
+![Status Bar View 2](images/demo/screenshot2.png)
+
+### Full Lyrics Panel
+![Lyrics Panel](images/demo/screenshot3.png)
 
 ## ⚠️ Requirements
 
@@ -12,64 +19,43 @@ Display synchronized lyrics for your currently playing songs directly in VSCode'
 
 ## Features
 
-- 🎵 Real-time synchronized lyrics that follow along with your music
-- 🎨 Smooth animations and word highlighting
-- 🎧 Support for both Apple Music and Spotify
-- 🌐 Multiple lyrics sources for better coverage
-- 🔄 Automatic song change detection
-- ⚡️ Fast and lightweight
+- 🎵 Shows synchronized lyrics in the status bar
+- 🎶 Supports both Apple Music and Spotify
+- 📝 Click to view full lyrics in a side panel
+- 🔄 Auto-updates as the song plays
+- 🎯 Command palette support: "Show Now Playing Lyrics"
 
 ## Installation
 
-1. Install from the VSCode Marketplace
-2. No configuration needed! Just start playing music in Apple Music or Spotify
+1. Install the extension from the VSCode Marketplace
+2. The lyrics will automatically appear in the status bar when you play music in Apple Music or Spotify
+3. Click on the lyrics to view them in full in a side panel
 
-## Security Analysis
+## Usage
 
-This extension is designed with security in mind:
-
-### Data Collection
-- Only collects currently playing song information (title, artist) from local Apple Music/Spotify
-- No personal data or listening history is stored
-- No analytics or telemetry
-
-### API Usage
-- Uses public APIs from lrclib.net, Netease, and QQ Music
-- Only sends song title and artist name to search for lyrics
-- No authentication or personal data sent
-- All requests are HTTPS encrypted
-
-### Local Access
-- Only uses AppleScript to get currently playing song info
-- No file system access needed
-- No sensitive permissions required
-
-### Privacy
-- No data stored between sessions
-- No cookies or local storage used
-- No tracking or user identification
+1. Play a song in Apple Music or Spotify
+2. The current lyrics will appear in your VSCode status bar
+3. Click on the lyrics or use the command "Show Now Playing Lyrics" to open the full view
+4. The lyrics will automatically update as the song plays
 
 ## Known Limitations
 
-1. Only works on macOS (due to AppleScript usage)
-2. Some songs may not have synchronized lyrics available
-3. Lyrics accuracy depends on the source databases
+- Only works on macOS due to AppleScript dependency
+- Requires Apple Music or Spotify desktop app to be installed
+- Some songs might not have synchronized lyrics available
 
-## Contributing
+## Privacy & Security
 
-Contributions are welcome! Please check out our [Contributing Guide](CONTRIBUTING.md).
+This extension:
+- Only accesses currently playing song information (title and artist)
+- Does not store any personal data or listening history
+- Makes API requests only to fetch lyrics
+- All API requests are made over HTTPS
 
 ## License
 
-MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see the [LICENSE](LICENSE) file for details
 
-## Credits
+## Contributing
 
-Thanks to:
-- lrclib.net
-- Netease Music API
-- QQ Music API
-
-## Support
-
-If you encounter any issues or have suggestions, please file them in our [GitHub repository](https://github.com/yourusername/vscode-now-playing-lyrics/issues).
+Found a bug or want to contribute? Feel free to open an issue or submit a pull request on [GitHub](https://github.com/maniyadv/vscode-now-playing-lyrics).
