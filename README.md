@@ -3,6 +3,7 @@
 Display synchronized lyrics for your currently playing songs directly in VSCode! Supports both Apple Music and Spotify.
 
 [![Visual Studio Marketplace](https://img.shields.io/visual-studio-marketplace/v/maniyadv.now-playing-lyrics)](https://marketplace.visualstudio.com/items?itemName=maniyadv.now-playing-lyrics)
+[![GitHub release](https://img.shields.io/github/v/release/maniyadv/vscode-now-playing-lyrics)](https://github.com/maniyadv/vscode-now-playing-lyrics/releases/latest)
 
 ## Screenshots
 
@@ -26,22 +27,24 @@ Display synchronized lyrics for your currently playing songs directly in VSCode!
 
 ## Installation
 
-### From VSCode Marketplace (Recommended)
+### VSCode (Recommended)
 1. Install the extension from the [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=maniyadv.now-playing-lyrics)
-2. The lyrics will automatically appear in the status bar when you play music in Apple Music or Spotify
+2. The lyrics will automatically appear in the status bar when you play music
 
-### Manual Installation
-1. Download the latest `.vsix` file from the [GitHub Releases](https://github.com/maniyadv/vscode-now-playing-lyrics/releases)
-2. Open VSCode
+### Cursor and Windsurf
+1. Download the `.vsix` file from [GitHub Releases](https://github.com/maniyadv/vscode-now-playing-lyrics/releases/latest)
+2. Open Cursor/Windsurf
 3. Go to Extensions (Cmd+Shift+X)
 4. Click on the "..." menu (top-right)
 5. Select "Install from VSIX..."
 6. Choose the downloaded `.vsix` file
 
+Note: The VSIX file on GitHub is identical to the version on VSCode Marketplace.
+
 ## Usage
 
 1. Play a song in Apple Music or Spotify
-2. The current lyrics will appear in your VSCode status bar
+2. The current lyrics will appear in your status bar
 3. Click on the lyrics or use the command "Show Now Playing Lyrics" to open the full view
 4. The lyrics will automatically update as the song plays
 
