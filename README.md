@@ -8,8 +8,6 @@ Display synchronized lyrics for your currently playing songs directly in VSCode!
 ![Status Bar View 1](images/demo/screenshot1.png)
 ![Status Bar View 2](images/demo/screenshot2.png)
 
-### Full Lyrics Panel
-![Lyrics Panel](images/demo/screenshot3.png)
 
 ## ⚠️ Requirements
 
