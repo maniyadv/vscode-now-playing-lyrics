@@ -48,6 +48,23 @@ Note: The VSIX file on GitHub is identical to the version on VSCode Marketplace.
 3. Click on the lyrics or use the command "Show Now Playing Lyrics" to open the full view
 4. The lyrics will automatically update as the song plays
 
+## Troubleshooting
+
+### Extension stuck on "Waiting for music..."
+
+If the extension is stuck on "Waiting for music..." even when music is playing, you need to grant permissions:
+
+1. Open **System Settings** > **Privacy & Security**
+2. Scroll down to **Automation**
+3. Find **VSCode** (or Cursor/Windsurf) in the list
+4. Enable permissions for:
+   - **Music**
+   - **Spotify** (if you use Spotify)
+   - **System Events**
+5. Restart VSCode
+
+Note: You might need to re-grant these permissions after updating the extension.
+
 ## Known Limitations
 
 - Only works on macOS due to AppleScript dependency

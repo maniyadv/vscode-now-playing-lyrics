@@ -62,6 +62,17 @@ function updateStatusBarText(text: string) {
     statusBarItem.text = ` 🎵  ${text}        `;
 }
 
+// Function to show error message with cooldown
+function showErrorWithCooldown(message: string) {
+    const now = Date.now();
+    if (now - (showErrorWithCooldown as any).lastErrorTime > (showErrorWithCooldown as any).ERROR_COOLDOWN) {
+        vscode.window.showErrorMessage(message);
+        (showErrorWithCooldown as any).lastErrorTime = now;
+    }
+}
+(showErrorWithCooldown as any).lastErrorTime = 0;
+(showErrorWithCooldown as any).ERROR_COOLDOWN = 5000; // 5 seconds cooldown between error messages
+
 export function activate(context: vscode.ExtensionContext) {
     // Create status bar item with highest priority (closest to the right)
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1000);
@@ -74,6 +85,15 @@ export function activate(context: vscode.ExtensionContext) {
     let currentLyrics: LyricLine[] = [];
     let lastTrackId: string = '';
     const lyricsCache = new Map<string, CachedLyrics>();
+
+    // Function to clear current lyrics state
+    function clearLyricsState() {
+        currentLyrics = [];
+        fullLyrics = '';
+        updateStatusBarText('Waiting for music...');
+        statusBarItem.tooltip = 'No music playing';
+        updatePanel();
+    }
 
     // Register command to show lyrics panel
     let disposable = vscode.commands.registerCommand('nowPlayingLyrics.showPanel', () => {
@@ -115,21 +135,28 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(disposable);
 
-    // Function to clear current lyrics state
-    function clearLyricsState() {
-        currentLyrics = [];
-        fullLyrics = '';
-        updateStatusBarText('Waiting for music...');
-        statusBarItem.tooltip = 'No music playing';
-        updatePanel();
-    }
+    // Register command for showing permission help
+    context.subscriptions.push(vscode.commands.registerCommand('nowPlayingLyrics.showPermissionHelp', () => {
+        vscode.window.showInformationMessage(
+            'To grant permissions:\n\n' +
+            '1. Open System Settings → Privacy & Security → Automation\n' +
+            '2. Find and enable permissions for:\n' +
+            `   - ${vscode.env.appName}\n` +
+            '   - Music\n' +
+            '   - Spotify (if you use it)\n' +
+            `3. Restart ${vscode.env.appName}`,
+            { modal: true }
+        );
+    }));
 
     // Update interval
     const updateInterval = setInterval(async () => {
         try {
+            console.log('Checking for current track...');
             const track = await getCurrentTrack();
             
             if (!track) {
+                console.log('No track returned');
                 if (currentTrack !== null) {
                     clearLyricsState();
                     currentTrack = null;
@@ -137,16 +164,22 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
+            console.log('Current track:', track);
             currentTrack = track;
 
             if (!track.isPlaying) {
+                console.log('Track is paused');
                 updateStatusBarText('Paused');
+                statusBarItem.command = 'nowPlayingLyrics.showPanel';
                 return;
             }
 
             // Check if song has changed
             const trackId = `${track.artist}-${track.title}`;
+            console.log('Track ID:', trackId, 'Last Track ID:', lastTrackId);
+            
             if (trackId !== lastTrackId) {
+                console.log('Song changed, fetching new lyrics');
                 lastTrackId = trackId;
                 currentLyrics = [];
                 updateStatusBarText('Fetching lyrics...');
@@ -155,13 +188,16 @@ export function activate(context: vscode.ExtensionContext) {
                     // Check cache first
                     const cached = lyricsCache.get(trackId);
                     if (cached && Date.now() - cached.timestamp < 24 * 60 * 60 * 1000) {
+                        console.log('Using cached lyrics');
                         currentLyrics = cached.syncedLyrics;
                         fullLyrics = cached.plainLyrics;
                         statusBarItem.tooltip = `Now Playing: ${track.title} - ${track.artist}\n\nClick to view full lyrics`;
+                        statusBarItem.command = 'nowPlayingLyrics.showPanel';
                         updatePanel();
                         return;
                     }
 
+                    console.log('Fetching fresh lyrics');
                     const lyricsResult = await fetchSynchronizedLyrics(track.artist, track.title);
                     
                     // Cache the result
@@ -173,10 +209,14 @@ export function activate(context: vscode.ExtensionContext) {
 
                     // Only update lyrics if the song hasn't changed while fetching
                     if (lastTrackId === trackId) {
+                        console.log('Updating lyrics');
                         currentLyrics = lyricsResult.syncedLyrics;
                         fullLyrics = cleanLyrics(lyricsResult.plainLyrics);
                         statusBarItem.tooltip = `Now Playing: ${track.title} - ${track.artist}\n\nClick to view full lyrics`;
+                        statusBarItem.command = 'nowPlayingLyrics.showPanel';
                         updatePanel();
+                    } else {
+                        console.log('Song changed while fetching lyrics');
                     }
                 } catch (error) {
                     console.error('Error fetching lyrics for new song:', error);
@@ -192,12 +232,27 @@ export function activate(context: vscode.ExtensionContext) {
             const currentLine = findCurrentLyricLine(currentLyrics, track.position * 1000);
             if (currentLine) {
                 updateStatusBarText(currentLine.text);
+                statusBarItem.command = 'nowPlayingLyrics.showPanel';
             } else if (currentLyrics.length > 0) {
                 updateStatusBarText('...');
+                statusBarItem.command = 'nowPlayingLyrics.showPanel';
             }
 
         } catch (error) {
             console.error('Error in update interval:', error);
+            if (error instanceof Error && (
+                error.message.includes('not allowed') || 
+                error.message.includes('permission') || 
+                error.message.includes('authorized') ||
+                error.message.includes('timed out')
+            )) {
+                console.log('Permission error, showing help');
+                updateStatusBarText('⚠️ Permission needed');
+                statusBarItem.command = 'nowPlayingLyrics.showPermissionHelp';
+                showErrorWithCooldown('Now Playing Lyrics needs permission to access Music/Spotify. Please check Privacy & Security settings.');
+            } else {
+                console.error('Unexpected error:', error);
+            }
             if (currentTrack !== null) {
                 clearLyricsState();
                 currentTrack = null;
@@ -216,55 +271,124 @@ async function getCurrentTrack(): Promise<CurrentTrack | null> {
             set musicIsRunning to false
             set spotifyIsRunning to false
             
-            tell application "System Events"
-                set musicIsRunning to exists (processes where name is "Music")
-                set spotifyIsRunning to exists (processes where name is "Spotify")
-            end tell
-            
-            if musicIsRunning then
-                tell application "Music"
-                    set playerState to player state
-                    if playerState is playing or playerState is paused then
-                        set currentTrack to current track
-                        return "music:" & artist of currentTrack & "," & name of currentTrack & "," & player position & "," & duration of current track & "," & (playerState is playing)
-                    end if
+            try
+                tell application "System Events"
+                    set musicIsRunning to exists (processes where name is "Music")
+                    set spotifyIsRunning to exists (processes where name is "Spotify")
                 end tell
-            end if
-            
-            if spotifyIsRunning then
-                tell application "Spotify"
-                    set playerState to player state
-                    if playerState is playing or playerState is paused then
-                        set currentTrack to current track
-                        return "spotify:" & artist of current track & "," & name of current track & "," & player position & "," & duration of current track & "," & (playerState is playing)
-                    end if
-                end tell
-            end if
-            
-            return "none:No track playing"
+                
+                if spotifyIsRunning then
+                    try
+                        tell application "Spotify"
+                            if it is running then
+                                try
+                                    set playerState to player state
+                                    if playerState is playing or playerState is paused then
+                                        set currentTrack to current track
+                                        return "spotify:" & artist of current track & "," & name of current track & "," & player position & "," & duration of current track & "," & (playerState is playing)
+                                    end if
+                                on error errMsg
+                                    -- This error occurs when Spotify is not authorized
+                                    if errMsg contains "not allowed" or errMsg contains "permission" or errMsg contains "authorized" then
+                                        error "Spotify needs to be authorized in System Settings → Privacy & Security → Automation"
+                                    end if
+                                    error errMsg
+                                end try
+                            end if
+                        end tell
+                    on error errMsg
+                        return "error:Spotify: " & errMsg
+                    end try
+                end if
+                
+                if musicIsRunning then
+                    try
+                        tell application "Music"
+                            if it is running then
+                                try
+                                    set playerState to player state
+                                    if playerState is playing or playerState is paused then
+                                        set currentTrack to current track
+                                        return "music:" & artist of currentTrack & "," & name of currentTrack & "," & player position & "," & duration of current track & "," & (playerState is playing)
+                                    end if
+                                on error errMsg
+                                    -- This error occurs when Music is not authorized
+                                    if errMsg contains "not allowed" or errMsg contains "permission" or errMsg contains "authorized" then
+                                        error "Music needs to be authorized in System Settings → Privacy & Security → Automation"
+                                    end if
+                                    error errMsg
+                                end try
+                            end if
+                        end tell
+                    on error errMsg
+                        return "error:Music: " & errMsg
+                    end try
+                end if
+                
+                return "none:No track playing"
+            on error errMsg
+                if errMsg contains "not allowed" or errMsg contains "permission" or errMsg contains "authorized" then
+                    return "error:Permission denied. Please check Privacy & Security settings."
+                else
+                    return "error:" & errMsg
+                end if
+            end try
         end run
     `;
 
     try {
-        const { stdout, stderr } = await execAsync(`osascript -e '${script}'`);
+        console.log('Executing AppleScript...');
+        
+        // Create a promise that rejects after 5 seconds
+        const timeoutPromise = new Promise<{stdout: string, stderr: string}>((_, reject) => {
+            setTimeout(() => reject(new Error('AppleScript timed out. Please check Privacy & Security settings.')), 5000);
+        });
+
+        // Race between the actual command and the timeout
+        const { stdout, stderr } = await Promise.race([
+            execAsync(`osascript -e '${script}'`) as Promise<{stdout: string, stderr: string}>,
+            timeoutPromise
+        ]);
+
         if (stderr) {
             console.error('AppleScript stderr:', stderr);
+            if (stderr.includes('not allowed') || stderr.includes('permission') || stderr.includes('authorized')) {
+                updateStatusBarText('⚠️ Permission needed');
+                showErrorWithCooldown('Now Playing Lyrics needs permission to access Music/Spotify. Please check Privacy & Security settings.');
+                throw new Error('Permission denied');
+            }
         }
 
         console.log('Raw player output:', stdout);
+        console.log('Trimmed output:', stdout.trim());
 
         if (!stdout.trim() || stdout.trim() === 'none:No track playing') {
+            console.log('No track detected, throwing error');
             throw new Error('No track currently playing');
         }
 
         const [source, ...parts] = stdout.trim().split(':');
+        console.log('Source:', source);
+        console.log('Parts:', parts);
+
+        if (source === 'error') {
+            const errorMsg = parts.join(':');
+            if (errorMsg.includes('not allowed') || errorMsg.includes('permission') || errorMsg.includes('authorized')) {
+                updateStatusBarText('⚠️ Permission needed');
+                showErrorWithCooldown('Now Playing Lyrics needs permission to access Music/Spotify. Please check Privacy & Security settings.');
+            }
+            throw new Error(errorMsg);
+        }
+
         const [artist, title, position, duration, isPlaying] = parts.join(':').split(',');
+        console.log('Parsed values:', { artist, title, position, duration, isPlaying });
 
         const cleanArtist = artist.replace(/[^\w\s-]/g, ' ').trim();
         const cleanTitle = title.replace(/[^\w\s-]/g, ' ').trim();
+        console.log('Cleaned values:', { cleanArtist, cleanTitle });
 
         if (!cleanArtist && cleanTitle.includes('-')) {
-            const [possibleArtist, ...titleParts] = cleanTitle.split('-').map(part => part.trim());
+            const [possibleArtist, ...titleParts] = cleanTitle.split('-').map((part: string) => part.trim());
             return {
                 artist: possibleArtist,
                 title: titleParts.join('-'),
@@ -283,7 +407,16 @@ async function getCurrentTrack(): Promise<CurrentTrack | null> {
         };
     } catch (error) {
         console.error('Error getting current track:', error);
-        throw new Error(error instanceof Error ? error.message : 'Failed to get current track');
+        if (error instanceof Error && (
+            error.message.includes('not allowed') || 
+            error.message.includes('permission') || 
+            error.message.includes('authorized') ||
+            error.message.includes('timed out')
+        )) {
+            updateStatusBarText('⚠️ Permission needed');
+            showErrorWithCooldown('Now Playing Lyrics needs permission to access Music/Spotify. Please check Privacy & Security settings.');
+        }
+        throw error;
     }
 }
 
