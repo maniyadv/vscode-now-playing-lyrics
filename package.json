@@ -2,7 +2,7 @@
     "name": "now-playing-lyrics",
     "displayName": "Now Playing Lyrics",
     "description": "Display synchronized lyrics for currently playing songs in Apple Music or Spotify",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "publisher": "maniyadv",
     "engines": {
         "vscode": "^1.85.0"
