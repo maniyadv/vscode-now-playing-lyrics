@@ -1,6 +1,6 @@
 # Now Playing Lyrics
 
-Display synchronized lyrics for your currently playing songs directly in VSCode! Supports both Apple Music and Spotify.
+Display synchronized lyrics for your currently playing songs in VSCode! 
 
 [![Visual Studio Marketplace](https://img.shields.io/visual-studio-marketplace/v/maniyadv.now-playing-lyrics)](https://marketplace.visualstudio.com/items?itemName=maniyadv.now-playing-lyrics)
 [![GitHub release](https://img.shields.io/github/v/release/maniyadv/vscode-now-playing-lyrics)](https://github.com/maniyadv/vscode-now-playing-lyrics/releases/latest)
@@ -8,14 +8,37 @@ Display synchronized lyrics for your currently playing songs directly in VSCode!
 ## Screenshots
 
 ### Status Bar Views
-![Status Bar View 1](images/demo/screenshot1.png)
-![Status Bar View 2](images/demo/screenshot2.png)
+![Screenshot](images/demo/screenshot.png)
 
 ## ⚠️ Requirements
 
 - **macOS only**: This extension uses AppleScript to interact with Music and Spotify apps
 - Apple Music or Spotify desktop app
 - VSCode 1.85.0 or higher
+
+## Permissions
+
+This extension requires macOS Automation permissions to function:
+
+1. **System Events**: To check which music apps are running
+2. **Music**: To get song information from the Music app
+3. **Spotify** (optional): To get song information from Spotify
+
+When you first use the extension, you'll be prompted to grant these permissions. You can also manage them in:
+- System Settings → Privacy & Security → Automation
+- Find "Visual Studio Code" (or your editor)
+- Enable the permissions you want to grant
+
+If you deny permissions:
+- The extension won't be able to detect your currently playing songs
+- You'll see a "Permission needed" message in the status bar
+- Click the status bar to see instructions for granting permissions
+
+These permissions are required because:
+- macOS restricts access to running applications for security
+- We need to know which music app is playing and get song details
+- We only access basic song information (title, artist, playback state)
+- No personal data is collected or transmitted
 
 ## Features
 

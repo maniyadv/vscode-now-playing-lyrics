@@ -11,6 +11,7 @@ interface LyricLine {
 }
 
 interface CurrentTrack {
+    app: string;  // Add app to interface
     artist: string;
     title: string;
     position: number;
@@ -56,22 +57,33 @@ let currentPanel: vscode.WebviewPanel | undefined = undefined;
 let currentTrack: CurrentTrack | null = null;
 let fullLyrics: string = '';
 
+// Global state to track last error time and type
+let lastErrorTime = 0;
+let lastErrorType = '';
+const ERROR_COOLDOWN_MS = 30000; // Increase cooldown to 30 seconds
+
 // Simple function to update status bar text
 function updateStatusBarText(text: string) {
-    // Add space before emoji and extra padding at the end to center align text
-    statusBarItem.text = ` 🎵  ${text}        `;
+    // Add space before emoji and reduce padding at the end
+    statusBarItem.text = ` 🎵  ${text}   `;
 }
 
-// Function to show error message with cooldown
-function showErrorWithCooldown(message: string) {
-    const now = Date.now();
-    if (now - (showErrorWithCooldown as any).lastErrorTime > (showErrorWithCooldown as any).ERROR_COOLDOWN) {
-        vscode.window.showErrorMessage(message);
-        (showErrorWithCooldown as any).lastErrorTime = now;
-    }
+// Add a debounce to prevent too frequent updates
+function debounce<T extends (...args: any[]) => any>(
+    func: T,
+    wait: number
+): (...args: Parameters<T>) => void {
+    let timeout: NodeJS.Timeout | null = null;
+    return (...args: Parameters<T>) => {
+        if (timeout) {
+            clearTimeout(timeout);
+        }
+        timeout = setTimeout(() => {
+            timeout = null;
+            func(...args);
+        }, wait);
+    };
 }
-(showErrorWithCooldown as any).lastErrorTime = 0;
-(showErrorWithCooldown as any).ERROR_COOLDOWN = 5000; // 5 seconds cooldown between error messages
 
 export function activate(context: vscode.ExtensionContext) {
     // Create status bar item with highest priority (closest to the right)
@@ -149,8 +161,8 @@ export function activate(context: vscode.ExtensionContext) {
         );
     }));
 
-    // Update interval
-    const updateInterval = setInterval(async () => {
+    // Debounce the update to run at most once every 500ms
+    const debouncedUpdate = debounce(async () => {
         try {
             console.log('Checking for current track...');
             const track = await getCurrentTrack();
@@ -169,7 +181,7 @@ export function activate(context: vscode.ExtensionContext) {
 
             if (!track.isPlaying) {
                 console.log('Track is paused');
-                updateStatusBarText('Paused');
+                updateStatusBarText('Paused   ');
                 statusBarItem.command = 'nowPlayingLyrics.showPanel';
                 return;
             }
@@ -182,7 +194,7 @@ export function activate(context: vscode.ExtensionContext) {
                 console.log('Song changed, fetching new lyrics');
                 lastTrackId = trackId;
                 currentLyrics = [];
-                updateStatusBarText('Fetching lyrics...');
+                updateStatusBarText('Fetching lyrics...   ');
 
                 try {
                     // Check cache first
@@ -220,7 +232,7 @@ export function activate(context: vscode.ExtensionContext) {
                     }
                 } catch (error) {
                     console.error('Error fetching lyrics for new song:', error);
-                    updateStatusBarText('No lyrics found');
+                    updateStatusBarText('No lyrics found   ');
                     statusBarItem.tooltip = `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
                     currentLyrics = [];
                     fullLyrics = '';
@@ -234,7 +246,7 @@ export function activate(context: vscode.ExtensionContext) {
                 updateStatusBarText(currentLine.text);
                 statusBarItem.command = 'nowPlayingLyrics.showPanel';
             } else if (currentLyrics.length > 0) {
-                updateStatusBarText('...');
+                updateStatusBarText('...   ');
                 statusBarItem.command = 'nowPlayingLyrics.showPanel';
             }
 
@@ -246,10 +258,8 @@ export function activate(context: vscode.ExtensionContext) {
                 error.message.includes('authorized') ||
                 error.message.includes('timed out')
             )) {
-                console.log('Permission error, showing help');
-                updateStatusBarText('⚠️ Permission needed');
+                updateStatusBarText('⚠️ Permission needed   ');
                 statusBarItem.command = 'nowPlayingLyrics.showPermissionHelp';
-                showErrorWithCooldown('Now Playing Lyrics needs permission to access Music/Spotify. Please check Privacy & Security settings.');
             } else {
                 console.error('Unexpected error:', error);
             }
@@ -258,10 +268,76 @@ export function activate(context: vscode.ExtensionContext) {
                 currentTrack = null;
             }
         }
-    }, 100);
+    }, 500);
+
+    let updateInterval: NodeJS.Timeout | null = null;
+
+    const startUpdateInterval = () => {
+        if (updateInterval) {
+            clearInterval(updateInterval);
+        }
+        debouncedUpdate();
+        updateInterval = setInterval(debouncedUpdate, 1000);
+    };
+
+    // Check if we've shown the welcome message before
+    const hasShownWelcome = context.globalState.get('hasShownWelcome', false);
+
+    if (!hasShownWelcome) {
+        const message = 'Now Playing Lyrics needs permission to:';
+        const detail = `1. Access System Events (to check which music apps are running)
+2. Control Music app (to get song info)
+3. Control Spotify (optional, only if you use Spotify)
+
+These permissions are required to show lyrics for your currently playing songs.
+You can grant these permissions in System Settings → Privacy & Security → Automation.
+
+Would you like to start using Now Playing Lyrics?`;
+
+        vscode.window.showInformationMessage(message, { modal: true, detail }, 'Get Started', 'Learn More')
+            .then(async selection => {
+                if (selection === 'Get Started') {
+                    await context.globalState.update('hasShownWelcome', true);
+                    startUpdateInterval();
+                } else if (selection === 'Learn More') {
+                    vscode.env.openExternal(vscode.Uri.parse('https://github.com/maniyadv/vscode-now-playing-lyrics#permissions'));
+                }
+            });
+
+        // Show initial status
+        statusBarItem.text = "$(info) Click to setup Now Playing Lyrics   ";
+        statusBarItem.command = 'nowPlayingLyrics.showPermissionHelp';
+        statusBarItem.show();
+    } else {
+        startUpdateInterval();
+    }
+
+    // Register the permission help command
+    context.subscriptions.push(vscode.commands.registerCommand('nowPlayingLyrics.showPermissionHelp', async () => {
+        const message = 'Now Playing Lyrics needs permission to access your music apps.';
+        const detail = `To grant permissions:
+
+1. Open System Settings
+2. Go to Privacy & Security → Automation
+3. Find "Visual Studio Code" (or your editor)
+4. Enable permissions for:
+   - System Events
+   - Music
+   - Spotify (if you use it)
+
+Would you like to open System Settings now?`;
+
+        const selection = await vscode.window.showInformationMessage(message, { modal: true, detail }, 'Open Settings', 'Learn More');
+        if (selection === 'Open Settings') {
+            // Open System Settings to the Privacy & Security page
+            await vscode.env.openExternal(vscode.Uri.parse('x-apple.systempreferences:com.apple.preference.security?Privacy_Automation'));
+        } else if (selection === 'Learn More') {
+            await vscode.env.openExternal(vscode.Uri.parse('https://github.com/maniyadv/vscode-now-playing-lyrics#permissions'));
+        }
+    }));
 
     context.subscriptions.push(
-        { dispose: () => clearInterval(updateInterval) }
+        { dispose: () => { if (updateInterval) clearInterval(updateInterval); } }
     );
 }
 
@@ -273,148 +349,110 @@ async function getCurrentTrack(): Promise<CurrentTrack | null> {
             
             try
                 tell application "System Events"
+                    log "Checking running apps..."
                     set musicIsRunning to exists (processes where name is "Music")
                     set spotifyIsRunning to exists (processes where name is "Spotify")
+                    log "Music running: " & musicIsRunning
+                    log "Spotify running: " & spotifyIsRunning
                 end tell
                 
                 if spotifyIsRunning then
                     try
                         tell application "Spotify"
+                            log "Getting Spotify state..."
                             if it is running then
                                 try
                                     set playerState to player state
+                                    log "Spotify player state: " & playerState
                                     if playerState is playing or playerState is paused then
                                         set currentTrack to current track
+                                        log "Got Spotify track info"
                                         return "spotify:" & artist of current track & "," & name of current track & "," & player position & "," & duration of current track & "," & (playerState is playing)
                                     end if
                                 on error errMsg
-                                    -- This error occurs when Spotify is not authorized
-                                    if errMsg contains "not allowed" or errMsg contains "permission" or errMsg contains "authorized" then
-                                        error "Spotify needs to be authorized in System Settings → Privacy & Security → Automation"
-                                    end if
+                                    log "Error getting Spotify track: " & errMsg
                                     error errMsg
                                 end try
                             end if
                         end tell
                     on error errMsg
-                        return "error:Spotify: " & errMsg
+                        log "Error in Spotify block: " & errMsg
+                        error errMsg
                     end try
                 end if
                 
                 if musicIsRunning then
                     try
                         tell application "Music"
+                            log "Getting Music state..."
                             if it is running then
                                 try
                                     set playerState to player state
+                                    log "Music player state: " & playerState
                                     if playerState is playing or playerState is paused then
                                         set currentTrack to current track
+                                        log "Got Music track info"
                                         return "music:" & artist of currentTrack & "," & name of currentTrack & "," & player position & "," & duration of current track & "," & (playerState is playing)
                                     end if
                                 on error errMsg
-                                    -- This error occurs when Music is not authorized
-                                    if errMsg contains "not allowed" or errMsg contains "permission" or errMsg contains "authorized" then
-                                        error "Music needs to be authorized in System Settings → Privacy & Security → Automation"
-                                    end if
+                                    log "Error getting Music track: " & errMsg
                                     error errMsg
                                 end try
                             end if
                         end tell
                     on error errMsg
-                        return "error:Music: " & errMsg
+                        log "Error in Music block: " & errMsg
+                        error errMsg
                     end try
                 end if
                 
                 return "none:No track playing"
             on error errMsg
-                if errMsg contains "not allowed" or errMsg contains "permission" or errMsg contains "authorized" then
-                    return "error:Permission denied. Please check Privacy & Security settings."
-                else
-                    return "error:" & errMsg
-                end if
+                log "Top level error: " & errMsg
+                error errMsg
             end try
         end run
     `;
 
     try {
         console.log('Executing AppleScript...');
-        
-        // Create a promise that rejects after 5 seconds
-        const timeoutPromise = new Promise<{stdout: string, stderr: string}>((_, reject) => {
-            setTimeout(() => reject(new Error('AppleScript timed out. Please check Privacy & Security settings.')), 5000);
-        });
-
-        // Race between the actual command and the timeout
-        const { stdout, stderr } = await Promise.race([
-            execAsync(`osascript -e '${script}'`) as Promise<{stdout: string, stderr: string}>,
-            timeoutPromise
-        ]);
-
+        const { stdout, stderr } = await execAsync(`osascript -e '${script.replace(/'/g, "'\"'\"'")}'`);
+        console.log('AppleScript stdout:', stdout);
         if (stderr) {
             console.error('AppleScript stderr:', stderr);
-            if (stderr.includes('not allowed') || stderr.includes('permission') || stderr.includes('authorized')) {
-                updateStatusBarText('⚠️ Permission needed');
-                showErrorWithCooldown('Now Playing Lyrics needs permission to access Music/Spotify. Please check Privacy & Security settings.');
-                throw new Error('Permission denied');
-            }
         }
 
-        console.log('Raw player output:', stdout);
-        console.log('Trimmed output:', stdout.trim());
-
-        if (!stdout.trim() || stdout.trim() === 'none:No track playing') {
-            console.log('No track detected, throwing error');
-            throw new Error('No track currently playing');
+        if (!stdout.trim()) {
+            console.log('No output from AppleScript');
+            return null;
         }
 
-        const [source, ...parts] = stdout.trim().split(':');
-        console.log('Source:', source);
-        console.log('Parts:', parts);
+        const [app, ...parts] = stdout.trim().split(':');
+        const info = parts.join(':');
 
-        if (source === 'error') {
-            const errorMsg = parts.join(':');
-            if (errorMsg.includes('not allowed') || errorMsg.includes('permission') || errorMsg.includes('authorized')) {
-                updateStatusBarText('⚠️ Permission needed');
-                showErrorWithCooldown('Now Playing Lyrics needs permission to access Music/Spotify. Please check Privacy & Security settings.');
-            }
-            throw new Error(errorMsg);
+        if (app === 'none') {
+            console.log('No track playing');
+            return null;
         }
 
-        const [artist, title, position, duration, isPlaying] = parts.join(':').split(',');
-        console.log('Parsed values:', { artist, title, position, duration, isPlaying });
-
-        const cleanArtist = artist.replace(/[^\w\s-]/g, ' ').trim();
-        const cleanTitle = title.replace(/[^\w\s-]/g, ' ').trim();
-        console.log('Cleaned values:', { cleanArtist, cleanTitle });
-
-        if (!cleanArtist && cleanTitle.includes('-')) {
-            const [possibleArtist, ...titleParts] = cleanTitle.split('-').map((part: string) => part.trim());
-            return {
-                artist: possibleArtist,
-                title: titleParts.join('-'),
-                position: parseFloat(position) || 0,
-                duration: parseFloat(duration) || 0,
-                isPlaying: isPlaying === 'true'
-            };
+        if (app === 'error') {
+            console.error('Error from AppleScript:', info);
+            throw new Error(info);
         }
 
+        const [artist, title, position, duration, isPlaying] = info.split(',');
         return {
-            artist: cleanArtist,
-            title: cleanTitle,
-            position: parseFloat(position) || 0,
-            duration: parseFloat(duration) || 0,
+            app,
+            artist,
+            title,
+            position: parseFloat(position),
+            duration: parseFloat(duration),
             isPlaying: isPlaying === 'true'
         };
-    } catch (error) {
-        console.error('Error getting current track:', error);
-        if (error instanceof Error && (
-            error.message.includes('not allowed') || 
-            error.message.includes('permission') || 
-            error.message.includes('authorized') ||
-            error.message.includes('timed out')
-        )) {
-            updateStatusBarText('⚠️ Permission needed');
-            showErrorWithCooldown('Now Playing Lyrics needs permission to access Music/Spotify. Please check Privacy & Security settings.');
+    } catch (error: any) {
+        console.error('Error executing AppleScript:', error);
+        if (error.stderr) {
+            console.error('AppleScript stderr:', error.stderr);
         }
         throw error;
     }

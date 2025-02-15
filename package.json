@@ -1,8 +1,8 @@
 {
     "name": "now-playing-lyrics",
     "displayName": "Now Playing Lyrics",
-    "description": "Display synchronized lyrics for your currently playing songs in VSCode",
-    "version": "0.1.5",
+    "description": "Display synchronized lyrics for your currently playing songs in VSCode. Requires permission to access Music and Spotify (optional) via macOS Automation.",
+    "version": "0.1.7",
     "publisher": "maniyadv",
     "engines": {
         "vscode": "^1.85.0"
