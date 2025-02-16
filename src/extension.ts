@@ -284,28 +284,24 @@ export function activate(context: vscode.ExtensionContext) {
     const hasShownWelcome = context.globalState.get('hasShownWelcome', false);
 
     if (!hasShownWelcome) {
-        const message = 'Now Playing Lyrics needs permission to:';
-        const detail = `1. Access System Events (to check which music apps are running)
-2. Control Music app (to get song info)
-3. Control Spotify (optional, only if you use Spotify)
+        const message = 'Now Playing Lyrics needs access to your music apps';
+        const detail = `To show lyrics for your music, this extension needs to:
 
-These permissions are required to show lyrics for your currently playing songs.
-You can grant these permissions in System Settings → Privacy & Security → Automation.
+1. Check which music app is playing (Music or Spotify)
+2. Get the current song info
 
-Would you like to start using Now Playing Lyrics?`;
+Click Allow when macOS asks for permission. You can manage these anytime in System Settings → Privacy & Security → Automation.`;
 
-        vscode.window.showInformationMessage(message, { modal: true, detail }, 'Get Started', 'Learn More')
+        vscode.window.showInformationMessage(message, { modal: true, detail }, 'Get Started')
             .then(async selection => {
                 if (selection === 'Get Started') {
                     await context.globalState.update('hasShownWelcome', true);
                     startUpdateInterval();
-                } else if (selection === 'Learn More') {
-                    vscode.env.openExternal(vscode.Uri.parse('https://github.com/maniyadv/vscode-now-playing-lyrics#permissions'));
                 }
             });
 
         // Show initial status
-        statusBarItem.text = "$(info) Click to setup Now Playing Lyrics   ";
+        statusBarItem.text = "$(info) Click to setup Now Playing Lyrics";
         statusBarItem.command = 'nowPlayingLyrics.showPermissionHelp';
         statusBarItem.show();
     } else {

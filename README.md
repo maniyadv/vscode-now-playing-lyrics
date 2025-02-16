@@ -18,27 +18,11 @@ Display synchronized lyrics for your currently playing songs in VSCode!
 
 ## Permissions
 
-This extension requires macOS Automation permissions to function:
+This extension needs permission to access:
+- Music app (if you use Apple Music)
+- Spotify (if you use Spotify)
 
-1. **System Events**: To check which music apps are running
-2. **Music**: To get song information from the Music app
-3. **Spotify** (optional): To get song information from Spotify
-
-When you first use the extension, you'll be prompted to grant these permissions. You can also manage them in:
-- System Settings → Privacy & Security → Automation
-- Find "Visual Studio Code" (or your editor)
-- Enable the permissions you want to grant
-
-If you deny permissions:
-- The extension won't be able to detect your currently playing songs
-- You'll see a "Permission needed" message in the status bar
-- Click the status bar to see instructions for granting permissions
-
-These permissions are required because:
-- macOS restricts access to running applications for security
-- We need to know which music app is playing and get song details
-- We only access basic song information (title, artist, playback state)
-- No personal data is collected or transmitted
+When you first use the extension, macOS will prompt for permissions. Click "Allow" to let the extension know what music is currently playing in Music or Spotify apps. This allows the extension to fetch the correct lyrics for you.
 
 ## Features
 
